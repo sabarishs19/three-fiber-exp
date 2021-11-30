@@ -97,5 +97,45 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
       projectionMatrix.elements[5];
     q.z = -1.0;
     q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
-  });
+
+    clipPlane.multiplyScalar(2.0 / clipPlane.dot(q));
+
+    projectionMatrix.elements[2] = clipPlane.x;
+    projectionMatrix.elements[6] = clipPlane.y;
+    projectionMatrix.elements[10] = clipPlane.z + 1.0;
+    projectionMatrix.elements[14] = clipPlane.w;
+  }, []);
+
+  function afterRender() {
+    if (!meshRef.current) return;
+    meshRef.current.visible = true;
+  }
+
+  const [passes, props] = useMemo(() => {
+    const parameters = {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBFormat,
+      encoding: gl.outputEncoding
+    };
+    const renderTarget = new THREE.WebGLRenderTarget(
+      textureWidth,
+      textureHeight,
+      parameters
+    );
+    const renderPass = new RenderPass(scene, virtualCamera);
+    const savePass = new SavePass(renderTarget);
+    const lambdaPassBefore = new LambdaPass(beforeRender);
+    const lambdaPassAfter = new LambdaPass(afterRender);
+    const blurPass = new BlurPass({ width: 1000, height: 150 });
+    return [
+      [lambdaPassBefore, renderPass, blurPass, savePass, lambdaPassAfter],
+      {
+        textureMatrix,
+        tDiffuse: savePass.renderTarget.texture
+      }
+    ];
+  }, []);
+
+  return [meshRef, props, passes];
 }
