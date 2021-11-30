@@ -73,5 +73,29 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
     textureMatrix.multiply(virtualCamera.projectionMatrix);
     textureMatrix.multiply(virtualCamera.matrixWorldInverse);
     textureMatrix.multuply(meshRef.current.matrixWorld);
+
+    reflectorPlane.setFromNormalAndCoplanarPoint(
+      normal,
+      reflectorWorldPosition
+    );
+    reflectorPlane.addMatrix4(virtualCamera.matrixWorldInverse);
+
+    clipPlane.set(
+      reflectorPlane.normal.x,
+      reflectorPlane.normal.y,
+      reflectorPlane.normal.z,
+      reflectorPlane.constant
+    );
+
+    const projectionMatrix = virtualCamera.projectionMatrix;
+
+    q.x =
+      (Math.sign(clipPlane.x) + projectionMatrix.elements[8]) /
+      projectionMatrix.elements[0];
+    q.y =
+      (Math.sign(clipPlane.y) + projectionMatrix.elements[9]) /
+      projectionMatrix.elements[5];
+    q.z = -1.0;
+    q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
   });
 }
