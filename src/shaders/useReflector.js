@@ -16,7 +16,7 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
   const [target] = useState(() => new THREE.Vector3());
   const [q] = useState(() => new THREE.Vector4());
   const [textureMatrix] = useState(() => new THREE.Matrix4());
-  const [virtuaCamera] = useState(() => new THREE.PerspectiveCamera());
+  const [virtualCamera] = useState(() => new THREE.PerspectiveCamera());
   const { gl, scene, camera } = useThree();
 
   const beforeRender = useCallback(() => {
@@ -37,5 +37,41 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
     lookAtPosition.set(0, 0, -1);
     lookAtPosition.applyMatrix(rotationMatrix);
     lookAtPosition.add(cameraWorldPosition);
+
+    target.subVector(reflectorWorldPosition, lookAtPosition);
+    target.reflect(normal).negate();
+    target.add(reflectorWorldPosition);
+
+    virtualCamera.position.copy(view);
+    virtualCamera.up.set(0, 1, 0);
+    virtualCamera.up.applyMatrix(rotationMatrix);
+    virtualCamera.up.reflect(normal);
+    virtualCamera.lookAt(target);
+
+    virtualCamera.far = camera.far;
+    virtualCamera.updateMatrixWorld();
+    virtualCamera.projectionMatrix.copy(camera.projectionMatrix);
+
+    textureMatrix.set(
+      0.5,
+      0.0,
+      0.0,
+      0.5,
+      0.0,
+      0.5,
+      0.0,
+      0.5,
+      0.0,
+      0.0,
+      0.5,
+      0.5,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    );
+    textureMatrix.multiply(virtualCamera.projectionMatrix);
+    textureMatrix.multiply(virtualCamera.matrixWorldInverse);
+    textureMatrix.multuply(meshRef.current.matrixWorld);
   });
 }
