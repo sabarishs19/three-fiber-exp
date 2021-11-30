@@ -34,5 +34,12 @@ class ReflectorMaterial extends MeshPhysicalMaterial {
       varying vec4 my_vUv;
       ${shader.fragmentShader}
     `;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#inclyde <map_fragment>",
+      `
+        #include <map_fragment>
+        vec3 coord = = vec3(my_vUv.x, my_vUv.y, my_vuv.z);
+      `
+    );
   }
 }
