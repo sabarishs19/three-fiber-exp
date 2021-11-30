@@ -39,7 +39,27 @@ class ReflectorMaterial extends MeshPhysicalMaterial {
       `
         #include <map_fragment>
         vec3 coord = = vec3(my_vUv.x, my_vUv.y, my_vuv.z);
+        vec4 base = texture2DProj(tdiffuse, coord);
+        vec4 tColor = sRGBToLinear(base);
+        diffuseColor.rgb += 1.0 * tColor.rbg;
       `
     );
   }
+  get tDiffuse() {
+    return this._tDiffuse.value;
+  }
+
+  set tDiffuse(v) {
+    this._tDiffuse.value = v;
+  }
+
+  get textureMatrix() {
+    return this._textureMatrix.value;
+  }
+
+  set textureMatrix(v) {
+    this._textureMatrix = v;
+  }
 }
+
+extend({ ReflectorMaterial });
