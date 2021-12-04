@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, useRef } from "react";
-import * as THREE from "THREE";
+import * as THREE from "three";
 import { SavePass, RenderPass, LambdaPass, BlurPass } from "postprocessing";
 import { useThree } from "@react-three/fiber";
 
@@ -9,7 +9,7 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
   const [normal] = useState(() => new THREE.Vector3());
   const [reflectorWorldPosition] = useState(() => new THREE.Vector3());
   const [cameraWorldPosition] = useState(() => new THREE.Vector3());
-  const [rotationMatrix] = useState(() => new THREE.Vector3());
+  const [rotationMatrix] = useState(() => new THREE.Matrix4());
   const [lookAtPosition] = useState(() => new THREE.Vector3(0, 0, -1));
   const [clipPlane] = useState(() => new THREE.Vector4());
   const [view] = useState(() => new THREE.Vector3());
@@ -24,34 +24,41 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
     meshRef.current.visible = false;
     reflectorWorldPosition.setFromMatrixPosition(meshRef.current.matrixWorld);
     cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
-    rotationMatrix.extractRotation(meshRef.current.matrixWorl);
+
+    rotationMatrix.extractRotation(meshRef.current.matrixWorld);
+
     normal.set(0, 0, 1);
-    normal.applyMatrix(rotationMatrix);
+    normal.applyMatrix4(rotationMatrix);
+
     view.subVectors(reflectorWorldPosition, cameraWorldPosition);
+
+    // Avoid rendering when reflector is facing away
     if (view.dot(normal) > 0) return;
+
     view.reflect(normal).negate();
     view.add(reflectorWorldPosition);
 
     rotationMatrix.extractRotation(camera.matrixWorld);
 
     lookAtPosition.set(0, 0, -1);
-    lookAtPosition.applyMatrix(rotationMatrix);
+    lookAtPosition.applyMatrix4(rotationMatrix);
     lookAtPosition.add(cameraWorldPosition);
 
-    target.subVector(reflectorWorldPosition, lookAtPosition);
+    target.subVectors(reflectorWorldPosition, lookAtPosition);
     target.reflect(normal).negate();
     target.add(reflectorWorldPosition);
 
     virtualCamera.position.copy(view);
     virtualCamera.up.set(0, 1, 0);
-    virtualCamera.up.applyMatrix(rotationMatrix);
+    virtualCamera.up.applyMatrix4(rotationMatrix);
     virtualCamera.up.reflect(normal);
     virtualCamera.lookAt(target);
 
-    virtualCamera.far = camera.far;
+    virtualCamera.far = camera.far; // Used in WebGLBackground
     virtualCamera.updateMatrixWorld();
     virtualCamera.projectionMatrix.copy(camera.projectionMatrix);
 
+    // Update the texture matrix
     textureMatrix.set(
       0.5,
       0.0,
@@ -72,13 +79,15 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
     );
     textureMatrix.multiply(virtualCamera.projectionMatrix);
     textureMatrix.multiply(virtualCamera.matrixWorldInverse);
-    textureMatrix.multuply(meshRef.current.matrixWorld);
+    textureMatrix.multiply(meshRef.current.matrixWorld);
 
+    // Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+    // Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
     reflectorPlane.setFromNormalAndCoplanarPoint(
       normal,
       reflectorWorldPosition
     );
-    reflectorPlane.addMatrix4(virtualCamera.matrixWorldInverse);
+    reflectorPlane.applyMatrix4(virtualCamera.matrixWorldInverse);
 
     clipPlane.set(
       reflectorPlane.normal.x,
@@ -98,8 +107,10 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
     q.z = -1.0;
     q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
 
+    // Calculate the scaled plane vector
     clipPlane.multiplyScalar(2.0 / clipPlane.dot(q));
 
+    // Replacing the third row of the projection matrix
     projectionMatrix.elements[2] = clipPlane.x;
     projectionMatrix.elements[6] = clipPlane.y;
     projectionMatrix.elements[10] = clipPlane.z + 1.0;
@@ -130,10 +141,7 @@ export default function useReflector(textureWidth = 128, textureHeight = 128) {
     const blurPass = new BlurPass({ width: 1000, height: 150 });
     return [
       [lambdaPassBefore, renderPass, blurPass, savePass, lambdaPassAfter],
-      {
-        textureMatrix,
-        tDiffuse: savePass.renderTarget.texture
-      }
+      { textureMatrix, tDiffuse: savePass.renderTarget.texture }
     ];
   }, []);
 

@@ -1,6 +1,5 @@
-import "./styles.css";
 import React, { Suspense } from "react";
-import { Canvas } from "@react-three";
+import { Canvas } from "@react-three/fiber";
 import { Circle, OrbitControls, Environment } from "@react-three/drei";
 import usePostprocessing from "./shaders/usePostprocessing";
 import useReflector from "./shaders/useReflector";
@@ -25,7 +24,7 @@ function Model(props) {
           opacity={0.7}
           color="black"
           metalness={1}
-          roughness={1}
+          roughness={0.3}
           {...reflectorProps}
         />
       </Circle>
@@ -37,7 +36,7 @@ export default function App() {
   return (
     <Canvas
       gl={{ alpha: false }}
-      shadwows
+      shadows
       camera={{ position: [0, 0, 20], fov: 15, near: 1, far: 50 }}
     >
       <color attach="background" args={["#151515"]} />

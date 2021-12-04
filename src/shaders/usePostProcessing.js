@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { EffectComposer } from "post-processing";
+import { EffectComposer } from "postprocessing";
 
-export default function usePostProcessing(extra = []) {
+export default function usePostprocessing(extra = []) {
   const { gl } = useThree();
   const [composer] = useMemo(() => {
     const parameters = {
@@ -13,8 +13,9 @@ export default function usePostProcessing(extra = []) {
       encoding: gl.outputEncoding
     };
     const renderTarget = new THREE.WebGLRenderTarget(800, 800, parameters);
+
     const composer = new EffectComposer(null);
-    composer.autoRendererToScreen = false;
+    composer.autoRenderToScreen = false;
     composer.renderer = gl;
     composer.inputBuffer = renderTarget;
     composer.outputBuffer = renderTarget.clone();
@@ -30,6 +31,5 @@ export default function usePostProcessing(extra = []) {
     composer.render(delta);
     gl.setRenderTarget(null);
   });
-
   return null;
 }
